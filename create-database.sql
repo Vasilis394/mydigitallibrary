@@ -1,0 +1,5 @@
+CREATE DATABASE digitallibrary;
+
+CREATE USER lib_admin WITH PASSWORD '123';
+
+GRANT ALL PRIVILEGES ON DATABASE digitalLibrary TO lib_admin;
