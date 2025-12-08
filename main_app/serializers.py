@@ -3,6 +3,8 @@ from .models import Literature, Library
 from django.contrib.auth.models import User
 
 class LibrarySerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    
     class Meta:
         model = Library
         fields = '__all__'
