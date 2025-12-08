@@ -3,11 +3,10 @@ from django.contrib.auth.models import User
 
 class Library(models.Model):
     name = models.CharField(max_length=100)
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_libraries',null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='libraries')  # Remove null=True
     
     def __str__(self):
-        return self.name
+        return f"{self.name} (by {self.user.username})"
 
 
 

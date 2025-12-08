@@ -102,19 +102,7 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied({"message": "You do not have permission to delete this literature."})
         instance.delete()
 
-    # add (override) the retrieve method below
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
 
-
-        libraries_not_associated = Library.objects.exclude(id__in=instance.libraries.all())
-        libraries_serializer = LibrarySerializer(libraries_not_associated, many=True)
-
-        return Response({
-            'literature': serializer.data,
-            'libraries_not_associated': libraries_serializer.data
-        })
 
 class LibraryList(generics.ListCreateAPIView):
     queryset = Library.objects.all()

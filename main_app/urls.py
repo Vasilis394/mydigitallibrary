@@ -11,4 +11,5 @@ urlpatterns = [
     path('literatures/<int:id>/', LiteratureDetail.as_view(), name='literature-detail'),
     path('libraries/', LibraryList.as_view(), name='library-list'),
 	path('libraries/<int:id>/', LibraryDetail.as_view(), name='library-detail'),
+    
 ]
