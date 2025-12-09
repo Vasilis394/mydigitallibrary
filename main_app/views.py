@@ -1,4 +1,4 @@
-# main_app/views.py
+
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,7 +11,7 @@ from .serializers import UserSerializer, LiteratureSerializer, LibrarySerializer
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticatedOrReadOnly  # Add this import
 
-# Create your views here.
+
 
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -27,7 +27,7 @@ class CreateUserView(generics.CreateAPIView):
             'user': response.data
         })
 
-# User Login
+
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -44,7 +44,7 @@ class LoginView(APIView):
             })
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-# User Verification
+
 class VerifyUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -57,14 +57,14 @@ class VerifyUserView(APIView):
             'user': UserSerializer(user).data
         })
 
-# UPDATE THIS: Allow guests to view literature
+
 class LiteratureList(generics.ListCreateAPIView):
     serializer_class = LiteratureSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]  # Changed from IsAuthenticated
+    permission_classes = [IsAuthenticatedOrReadOnly]  
 
     def get_queryset(self):
-        # Guests can see all literature
-        # Users can see all literature too (or filter by user if you prefer)
+        
+        
         return Literature.objects.all()
 
     def perform_create(self, serializer):
@@ -74,7 +74,7 @@ class LiteratureList(generics.ListCreateAPIView):
         else:
             raise PermissionDenied({"message": "You must be logged in to create literature."})
 
-# UPDATE THIS: Allow guests to view details
+
 class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Literature.objects.all()
     serializer_class = LiteratureSerializer
@@ -84,7 +84,7 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Literature.objects.all()
 
-    # In LiteratureDetail.retrieve() method, update the serializer usage:
+    
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
@@ -117,9 +117,9 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied({"message": "You do not have permission to delete this literature."})
         instance.delete()
 
-# Update LibraryList view
+
 class LibraryList(generics.ListCreateAPIView):
-    serializer_class = LibrarySerializer  # Use basic serializer for list
+    serializer_class = LibrarySerializer  
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -133,7 +133,7 @@ class LibraryList(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-# Update LibraryDetail view
+
 class LibraryDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'
@@ -142,7 +142,7 @@ class LibraryDetail(generics.RetrieveUpdateDestroyAPIView):
         return Library.objects.filter(user=self.request.user)
     
     def get_serializer_class(self):
-        # Use detail serializer for retrieve, basic for update
+        
         if self.request.method == 'GET':
             return LibraryDetailSerializer
         return LibrarySerializer
@@ -160,7 +160,7 @@ class AddLibraryToLiterature(APIView):
             literature = Literature.objects.get(id=literature_id)
             library = Library.objects.get(id=library_id)
             
-            # FIXED: Ensure the library belongs to the current user
+            
             if library.user != request.user:
                 return Response(
                     {'error': 'You do not own this library.'}, 
@@ -191,7 +191,7 @@ class RemoveLibraryFromLiterature(APIView):
             literature = Literature.objects.get(id=literature_id)
             library = Library.objects.get(id=library_id)
             
-            # FIXED: Ensure the library belongs to the current user
+            
             if library.user != request.user:
                 return Response(
                     {'error': 'You do not own this library.'}, 

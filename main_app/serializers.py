@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Literature, Library
 from django.contrib.auth.models import User
 
-# main_app/serializers.py
+
 class LibrarySerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     literature_count = serializers.SerializerMethodField()
