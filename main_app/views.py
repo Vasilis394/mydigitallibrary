@@ -79,10 +79,9 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Literature.objects.all()
     serializer_class = LiteratureSerializer
     lookup_field = 'id'
-    permission_classes = [IsAuthenticatedOrReadOnly]  # Changed from IsAuthenticated
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        # Guests can view any literature
         return Literature.objects.all()
 
     def retrieve(self, request, *args, **kwargs):
@@ -91,19 +90,27 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
         
         # Only show libraries for authenticated users
         if request.user.is_authenticated:
-            libraries_not_associated = Library.objects.exclude(id__in=instance.libraries.all())
+            # FIXED: Only show libraries that belong to the current user
+            user_libraries = Library.objects.filter(user=request.user)
+            libraries_not_associated = user_libraries.exclude(id__in=instance.libraries.all())
             libraries_serializer = LibrarySerializer(libraries_not_associated, many=True)
+            
+            # Get only user's libraries that are associated
+            user_associated_libraries = instance.libraries.filter(user=request.user)
+            user_associated_serializer = LibrarySerializer(user_associated_libraries, many=True)
+            
             return Response({
                 'literature': serializer.data,
                 'libraries_not_associated': libraries_serializer.data,
-                'user_owns': instance.user == request.user  # Add this to check ownership
+                'user_associated_libraries': user_associated_serializer.data,  # Add this
+                'user_owns': instance.user == request.user
             })
         else:
             return Response({
                 'literature': serializer.data,
                 'user_owns': False
             })
-
+        
     def perform_update(self, serializer):
         literature = self.get_object()
         if literature.user != self.request.user:
@@ -140,26 +147,59 @@ class AddLibraryToLiterature(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def post(self, request, literature_id, library_id):
-        literature = Literature.objects.get(id=literature_id)
-        library = Library.objects.get(id=library_id)
-        
-        # Check if user owns the library
-        if library.user != request.user:
-            raise PermissionDenied({"message": "You do not own this library."})
-        
-        literature.libraries.add(library)
-        return Response({'message': f'Library {library.name} added to literature {literature.title}'})
+        try:
+            literature = Literature.objects.get(id=literature_id)
+            library = Library.objects.get(id=library_id)
+            
+            # FIXED: Ensure the library belongs to the current user
+            if library.user != request.user:
+                return Response(
+                    {'error': 'You do not own this library.'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            literature.libraries.add(library)
+            return Response({
+                'message': f'Library {library.name} added to literature {literature.title}',
+                'library': LibrarySerializer(library).data
+            })
+        except Literature.DoesNotExist:
+            return Response(
+                {'error': 'Literature not found.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Library.DoesNotExist:
+            return Response(
+                {'error': 'Library not found.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class RemoveLibraryFromLiterature(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def post(self, request, literature_id, library_id):
-        literature = Literature.objects.get(id=literature_id)
-        library = Library.objects.get(id=library_id)
-        
-        # Check if user owns the library
-        if library.user != request.user:
-            raise PermissionDenied({"message": "You do not own this library."})
-        
-        literature.libraries.remove(library)
-        return Response({'message': f'Library {library.name} removed from literature {literature.title}'})
+        try:
+            literature = Literature.objects.get(id=literature_id)
+            library = Library.objects.get(id=library_id)
+            
+            # FIXED: Ensure the library belongs to the current user
+            if library.user != request.user:
+                return Response(
+                    {'error': 'You do not own this library.'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            literature.libraries.remove(library)
+            return Response({
+                'message': f'Library {library.name} removed from literature {literature.title}'
+            })
+        except Literature.DoesNotExist:
+            return Response(
+                {'error': 'Literature not found.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Library.DoesNotExist:
+            return Response(
+                {'error': 'Library not found.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
