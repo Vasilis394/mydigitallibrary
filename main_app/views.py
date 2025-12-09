@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from .models import Literature, Library
-from .serializers import UserSerializer, LiteratureSerializer, LibrarySerializer
+from .serializers import UserSerializer, LiteratureSerializer, LibrarySerializer, LibraryDetailSerializer
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticatedOrReadOnly  # Add this import
 
@@ -84,32 +84,27 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Literature.objects.all()
 
+    # In LiteratureDetail.retrieve() method, update the serializer usage:
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        
-        # Only show libraries for authenticated users
+    
         if request.user.is_authenticated:
-            # FIXED: Only show libraries that belong to the current user
             user_libraries = Library.objects.filter(user=request.user)
             libraries_not_associated = user_libraries.exclude(id__in=instance.libraries.all())
-            libraries_serializer = LibrarySerializer(libraries_not_associated, many=True)
-            
-            # Get only user's libraries that are associated
             user_associated_libraries = instance.libraries.filter(user=request.user)
-            user_associated_serializer = LibrarySerializer(user_associated_libraries, many=True)
-            
+        
             return Response({
                 'literature': serializer.data,
-                'libraries_not_associated': libraries_serializer.data,
-                'user_associated_libraries': user_associated_serializer.data,  # Add this
+                'libraries_not_associated': LibrarySerializer(libraries_not_associated, many=True).data,
+                'user_associated_libraries': LibrarySerializer(user_associated_libraries, many=True).data,
                 'user_owns': instance.user == request.user
-            })
+        })
         else:
             return Response({
                 'literature': serializer.data,
                 'user_owns': False
-            })
+        })
         
     def perform_update(self, serializer):
         literature = self.get_object()
@@ -122,26 +117,40 @@ class LiteratureDetail(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied({"message": "You do not have permission to delete this literature."})
         instance.delete()
 
-# UPDATE THIS: Libraries are user-specific
+# Update LibraryList view
 class LibraryList(generics.ListCreateAPIView):
-    serializer_class = LibrarySerializer
-    permission_classes = [permissions.IsAuthenticated]  # Only authenticated users
+    serializer_class = LibrarySerializer  # Use basic serializer for list
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Users only see their own libraries
         return Library.objects.filter(user=self.request.user)
-
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+# Update LibraryDetail view
 class LibraryDetail(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = LibrarySerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'
 
     def get_queryset(self):
-        # Users can only access their own libraries
         return Library.objects.filter(user=self.request.user)
+    
+    def get_serializer_class(self):
+        # Use detail serializer for retrieve, basic for update
+        if self.request.method == 'GET':
+            return LibraryDetailSerializer
+        return LibrarySerializer
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 class AddLibraryToLiterature(APIView):
     permission_classes = [permissions.IsAuthenticated]
